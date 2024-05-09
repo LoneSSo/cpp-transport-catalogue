@@ -13,6 +13,11 @@ struct Coordinates {
     }
 };
 
+struct Distance {
+    double geo;
+    double road;
+};
+
 inline double ComputeDistance(Coordinates from, Coordinates to) {
     using namespace std;
     if (from == to) {
