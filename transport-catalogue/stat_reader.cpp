@@ -1,12 +1,24 @@
 #include "stat_reader.h"
 
 #include <iomanip>
+#include <iostream>
 using namespace std;
 using namespace std::string_view_literals;
 
 using sv = std::string_view;
 
-RequestDescription ParseRequest(sv request){
+void StatReader::GetData(TransportCatalogue catalogue, istream& input, ostream& output){
+
+    int stat_request_count;
+    input >> stat_request_count >> ws;
+    for (int i = 0; i < stat_request_count; ++i) {
+        string line;
+        getline(input, line);
+        ParseAndPrintStat(catalogue, line, output);
+    }
+};
+
+StatReader::RequestDescription StatReader::ParseRequest(sv request){
 
     auto space_pos = request.find(' ');
     auto not_space = request.find_first_not_of(' ', space_pos);
@@ -15,7 +27,7 @@ RequestDescription ParseRequest(sv request){
             string(request.substr(not_space, request.size()))};
 }
 
-void ParseAndPrintStat(const TransportCatalogue& transport_catalogue, sv request,
+void StatReader::ParseAndPrintStat(const TransportCatalogue& transport_catalogue, sv request,
                        ostream& output) {
 
     RequestDescription command = ParseRequest(request);
@@ -33,7 +45,7 @@ void ParseAndPrintStat(const TransportCatalogue& transport_catalogue, sv request
     }
 }
 
-ostream& operator<<(ostream& output, const BusInfo* info){
+ostream& StatReader::operator<<(ostream& output, const BusInfo* info){
 
     if (info == nullptr){
         output << "not found"sv;
@@ -50,7 +62,7 @@ ostream& operator<<(ostream& output, const BusInfo* info){
     return output;  
 }
 
-ostream& operator<<(ostream& output, const StopInfo* info){
+ostream& StatReader::operator<<(ostream& output, const StopInfo* info){
 
     if (info == nullptr){
         output << "not found"sv;

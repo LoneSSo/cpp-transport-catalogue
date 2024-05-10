@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -23,6 +24,13 @@ struct CommandDescription {
 
 class InputReader {
 public:
+
+    /*
+     * Принимает данные из потока и парсит их в команды.
+     */
+    void LoadData(TransportCatalogue& catalogue, std::istream& input);
+
+private:
     /**
      * Парсит строку в структуру CommandDescription и сохраняет результат в commands_
      */
@@ -33,6 +41,5 @@ public:
      */
     void ApplyCommands(TransportCatalogue& catalogue) const;
 
-private:
     std::vector<CommandDescription> commands_;
 };
