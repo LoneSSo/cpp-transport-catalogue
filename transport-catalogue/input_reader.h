@@ -19,7 +19,7 @@ struct CommandDescription {
 
     std::string command;      // Название команды
     std::string id;           // id маршрута или остановки
-    std::string description;  // Параметры команды
+    std::vector<std::string> description;  // Параметры команды
 };
 
 class InputReader {

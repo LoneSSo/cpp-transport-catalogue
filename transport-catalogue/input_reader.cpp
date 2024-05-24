@@ -5,23 +5,53 @@
 #include <iterator>
 
 using namespace std;
+
 /**
- * Парсит строку вида "10.123,  -30.1837" и возвращает пару координат (широта, долгота)
+ * Парсит строку вида "0000m to StopName" и возвращает пару (имя, дистанция);
  */
-Coordinates ParseCoordinates(string_view str) {
-    static const double nan = std::nan("");
+pair<string_view, double> ParseDistanceToStop(string_view command){
+    double distance;
+    string_view name;
 
-    auto not_space = str.find_first_not_of(' ');
-    auto comma = str.find(',');
-
-    if (comma == str.npos) {
-        return {nan, nan};
+    size_t space_pos = command.find_first_of(' ');
+    if (space_pos == command.npos){
+        return {};
     }
 
-    auto not_space2 = str.find_first_not_of(' ', comma + 1);
+    size_t name_pos = command.find_first_of('o') + 2;
+    if (name_pos == command.npos){
+        return {};
+    }
 
-    double lat = stod(string(str.substr(not_space, comma - not_space)));
-    double lng = stod(string(str.substr(not_space2)));
+    distance = stod(string(command.substr(0, space_pos - 1)));
+    name = command.substr(name_pos);
+
+    return {name, distance};
+}
+
+/**
+ * Принимает вектор команд, парсит строки вида "000m to StopName" и возвращает вектор пар {имя, дистанция}
+ */
+vector<pair<string_view, double>> MakeDistancesVector(const vector<string>& description){
+    if (description.size() <= 2){
+        return {};
+    }
+
+    vector<pair<string_view, double>> result;
+    for (size_t i = 2; i < description.size(); i++){
+        result.emplace_back(ParseDistanceToStop(description[i]));
+    }
+
+    return result;
+}
+
+/**
+ * Принимает вектор команд, объединяет отдельные координаты и возвращает пару координат (широта, долгота)
+ */
+Coordinates ParseCoordinates(const vector<string>& description) {
+
+    double lat = stod(description[0]);
+    double lng = stod(description[1]);
 
     return {lat, lng};
 }
@@ -63,7 +93,8 @@ vector<string_view> Split(string_view string, char delim) {
  * Для кольцевого маршрута (A>B>C>A) возвращает массив названий остановок [A,B,C,A]
  * Для некольцевого маршрута (A-B-C-D) возвращает массив названий остановок [A,B,C,D,C,B,A]
  */
-vector<string_view> ParseRoute(string_view route) {
+vector<string_view> ParseRoute(const vector<string>& description) {
+    string_view route = description[0];
     if (route.find('>') != route.npos) {
         return Split(route, '>');
     }
@@ -91,9 +122,14 @@ CommandDescription ParseCommandDescription(string_view line) {
         return {};
     }
 
+    vector<string> description;
+    for (auto command : Split(line.substr(colon_pos + 1), ',')){
+        description.emplace_back(Trim(command));
+    }
+
     return {string(line.substr(0, space_pos)),
             string(line.substr(not_space, colon_pos - not_space)),
-            string(line.substr(colon_pos + 1))};
+            std::move(description)};
 }
 
 void InputReader::LoadData(TransportCatalogue& catalogue, istream& input){
@@ -130,10 +166,17 @@ void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) 
     }
 
     for (auto command : stop_commands){
-        catalogue.AddStop(command->id, ParseCoordinates(command->description));
+        catalogue.AddStop(std::move(command->id), ParseCoordinates(command->description), MakeDistancesVector(command->description));
     }
-
+    
     for (auto command : bus_commands){
-        catalogue.AddBus(command->id, ParseRoute(command->description));
+
+        // Избегаем инвалидации string_view.
+        vector<string_view> stops_on_route;
+        for (auto name : ParseRoute(command->description)){
+            stops_on_route.emplace_back(catalogue.GetStop(name)->name);
+        }
+
+        catalogue.AddBus(command->id, std::move(stops_on_route));
     }
 }

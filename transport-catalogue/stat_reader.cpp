@@ -56,7 +56,8 @@ ostream& StatReader::operator<<(ostream& output, const BusInfo* info){
     output 
         << info->stops_count << " stops on route, "sv
         << info->unique_count << " unique stops, "sv
-        << setprecision(6) << info->route_length << " route length"sv
+        << setprecision(6) << info->route_length << " route length, "sv
+        << info->curvature << " curvature"
         << setprecision(default_precision);  
 
     return output;  

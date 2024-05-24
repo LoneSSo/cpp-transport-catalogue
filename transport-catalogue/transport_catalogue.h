@@ -9,8 +9,6 @@
 #include <vector>
 #include <unordered_map>
 
-
-
 struct Stop {
 
 	std::string name;
@@ -33,9 +31,8 @@ struct BusInfo{
 	size_t stops_count = 0;
 	size_t unique_count = 0;
 	double route_length = 0.0;
+	double curvature = 0.0;
 };
-
-
 
 // Хэш только по имени — имена остановок уникальны. 
 struct PairHash {
@@ -44,8 +41,12 @@ private:
 	std::hash<std::string_view> sv_hasher_;
 };
 
+
 class TransportCatalogue {
+	
 using sv = std::string_view;
+using DistancesInfo = std::unordered_map<std::pair<const Stop*, const Stop*>, double, PairHash>;
+
 public:
 	TransportCatalogue() = default;
 
@@ -57,7 +58,7 @@ public:
 	const BusInfo* GetBusInfo(sv name) const;
 	
 
-	void AddStop(sv name, Coordinates coordinates);
+	void AddStop(sv name, Coordinates coordinates, std::vector<std::pair<sv, double>> distances);
 
 	const Stop* GetStop(sv name) const;
 
@@ -68,6 +69,10 @@ private:
 
 	void AddBusToThroughStops(const Bus* bus);
 
+	void AddRoadDistance(sv from, sv to, double road_distance);
+
+	void ChangeStopCoordinates(const Stop* stop, Coordinates coordinates);
+
 	std::deque<Bus> buses_data_;
 	std::unordered_map<sv, const Bus*> buses_;	
 	std::unordered_map<const Bus*, BusInfo> bus_info_;
@@ -75,4 +80,6 @@ private:
 	std::deque<Stop> stops_data_;
 	std::unordered_map<sv, const Stop*> stops_;
 	std::unordered_map<const Stop*, StopInfo> stop_info_;
+
+	DistancesInfo road_distances_;
 };

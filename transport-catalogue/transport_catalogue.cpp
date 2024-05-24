@@ -52,17 +52,33 @@ const BusInfo* TransportCatalogue::GetBusInfo(sv name) const {
 }
 
 /*
- * Добавляет остановку в справочник. 
+ * Добавляет остановку в справочник. Создаёт и при необходимости изменяет информацию о расстоянии до остановок.
  */
-void TransportCatalogue::AddStop(sv name, Coordinates coordinates){
-    Stop stop;
+void TransportCatalogue::AddStop(sv name, Coordinates coordinates, vector<pair<sv, double>> distances = {}){
 
-    stop.name = move(name);
-    stop.coordinates = move(coordinates);
+    if (GetStop(name)){
+        ChangeStopCoordinates(GetStop(name), move(coordinates));
+    } else {
+        Stop stop;
 
-    Stop* stop_ptr = &stops_data_.emplace_back(move(stop));
-    stops_[stop_ptr->name] = stop_ptr;
-    stop_info_[stop_ptr] = {};    
+        stop.name = move(name);
+        stop.coordinates = move(coordinates);
+
+        Stop* stop_ptr = &stops_data_.emplace_back(move(stop));
+        stops_[stop_ptr->name] = stop_ptr;
+        stop_info_[stop_ptr] = {};
+    }
+
+    /*
+     * Пройдёмся по вектору пар (остановка-дистанция) и добавим дистанции в поле класса. 
+     * Если такой остановки ещё нет, то подготовим для неё почву, чтобы не навернулись указатели. 
+     */ 
+    for (auto [destination, road_distance] : distances){
+        if (!GetStop(destination)){
+            AddStop(destination, {0, 0});   
+        }        
+        AddRoadDistance(name, destination, road_distance);
+    }  
 }
 
 /*
@@ -95,30 +111,39 @@ const StopInfo* TransportCatalogue::GetStopInfo(sv name) const {
  */
 void TransportCatalogue::AddBusInfo(const Bus* bus){
 
-    double length = 0;
+    double geo_length = 0;
+    double road_length = 0;
 
-    pair<Coordinates, Coordinates> from_to_pair;
+    pair<const Stop*, const Stop*> from_to;
     // Ничего умнее не придумал.
     unordered_set<sv> uniques;
 
     bool is_first = true;
     for (auto stop : bus -> route){
 
-        const auto& stop_ = *GetStop(stop);
+        const auto stop_ = GetStop(stop);
         uniques.emplace(stop);
 
         if (is_first){
-            from_to_pair.first = stop_.coordinates;
+            from_to.first = stop_;
             is_first = false;
             continue;
         }
 
-        from_to_pair.second = stop_.coordinates;
-        length += ComputeDistance(from_to_pair.first, from_to_pair.second);
-        from_to_pair.first = from_to_pair.second;
-    }
+        from_to.second = stop_;
 
-    bus_info_[bus] = {bus->route.size(), uniques.size(), length};
+        geo_length += ComputeDistance(from_to.first->coordinates, 
+                                      from_to.second->coordinates);
+        road_length += road_distances_[from_to];
+
+        from_to.first = from_to.second;
+    }
+    double curvature = road_length / geo_length;
+
+    bus_info_[bus] = {bus->route.size()
+                    , uniques.size()
+                    , road_length
+                    , curvature};
 }
 
 /*
@@ -132,6 +157,29 @@ void TransportCatalogue::AddBusToThroughStops(const Bus* bus){
         stop_info.through_buses.emplace(bus->name);
     }
 };
+
+/*
+ * Добавляет дистанцию от from до to. И обратно, если такого маршрута ещё нет.  
+ */
+void TransportCatalogue::AddRoadDistance(sv from, sv to, double road_distance){
+    auto from_ = GetStop(from)
+        , to_ = GetStop(to);
+
+    road_distances_[{from_, to_}] = road_distance;
+
+    if (from_ != to_ && !road_distances_.count({to_, from_})){
+        road_distances_[{to_, from_}] = road_distance;
+    }
+}
+
+/*
+ * ИЗМЕНЯЕТ(!!!) координаты существующей остановки. 
+ */
+void TransportCatalogue::ChangeStopCoordinates(const Stop* stop, Coordinates coordinates){
+
+    auto ptr_ = const_cast<Stop*>(stop); // !!!
+    ptr_->coordinates = move(coordinates);
+}
 
 
 
