@@ -6,12 +6,18 @@
 
 using namespace std;
 
-/**
- * Парсит строку вида "0000m to StopName" и возвращает пару (имя, дистанция);
- */
-pair<string_view, double> ParseDistanceToStop(string_view command){
+struct FromToStopDistance {
+
+    string_view from_name;
+    string_view to_name;
     double distance;
-    string_view name;
+};
+/**
+ * Принимает имя from и строку вида "0000m to StopName", возвращает структуру (from, to, дистанция);
+ */
+FromToStopDistance ParseDistanceToStop(string_view from, string_view command){
+    double distance;
+    string_view to;
 
     size_t space_pos = command.find_first_of(' ');
     if (space_pos == command.npos){
@@ -24,22 +30,22 @@ pair<string_view, double> ParseDistanceToStop(string_view command){
     }
 
     distance = stod(string(command.substr(0, space_pos - 1)));
-    name = command.substr(name_pos);
+    to = command.substr(name_pos);
 
-    return {name, distance};
+    return {from, to, distance};
 }
 
 /**
- * Принимает вектор команд, парсит строки вида "000m to StopName" и возвращает вектор пар {имя, дистанция}
+ * Принимает string_view имя from, вектор команд, парсит строки вида "000m to StopName" и возвращает структуру {from, to, дистанция}
  */
-vector<pair<string_view, double>> MakeDistancesVector(const vector<string>& description){
+vector<FromToStopDistance> MakeDistancesVector(string_view from, const vector<string>& description){
     if (description.size() <= 2){
         return {};
     }
 
-    vector<pair<string_view, double>> result;
+    vector<FromToStopDistance> result;
     for (size_t i = 2; i < description.size(); i++){
-        result.emplace_back(ParseDistanceToStop(description[i]));
+        result.emplace_back(ParseDistanceToStop(from, description[i]));
     }
 
     return result;
@@ -156,6 +162,7 @@ void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) 
 
     vector<const CommandDescription*> stop_commands;
     vector<const CommandDescription*> bus_commands;
+    vector<vector<FromToStopDistance>> distances;
 
     for (const auto& command : commands_){
         if(command.command[0] == 'S'){
@@ -166,7 +173,16 @@ void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) 
     }
 
     for (auto command : stop_commands){
-        catalogue.AddStop(std::move(command->id), ParseCoordinates(command->description), MakeDistancesVector(command->description));
+        catalogue.AddStop(command->id, ParseCoordinates(command->description));
+        distances.emplace_back(MakeDistancesVector(command->id, command->description));
+    }
+
+    for (auto vector : distances){
+        for(auto distance : vector){
+            catalogue.AddDistance(catalogue.GetStop(distance.from_name)
+                                , catalogue.GetStop(distance.to_name)
+                                , distance.distance);
+        }
     }
     
     for (auto command : bus_commands){
