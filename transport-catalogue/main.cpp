@@ -1,18 +1,13 @@
-#include <iostream>
-#include <string>
-
-#include "input_reader.h"
-#include "stat_reader.h"
-
-using namespace std;
+#include "json_reader.h"
 
 int main() {
+
     TransportCatalogue catalogue;
+    renderer::MapRenderer renderer;
 
-{
-    InputReader reader;
-    reader.LoadData(catalogue, cin);
-}
+    RequestHandler handler_(catalogue, renderer);
+    reader::JsonReader json_reader(catalogue, handler_, std::cin);
+    renderer.SetContext(json_reader.GetRenderContext());
 
-    StatReader::GetData(catalogue, cin, cout);
+    json_reader.PrintStat(std::cout);
 }

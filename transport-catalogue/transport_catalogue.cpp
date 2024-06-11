@@ -1,25 +1,22 @@
 #include "transport_catalogue.h"
 
 #include <unordered_set>
-using namespace std;
-using sv = std::string_view;
 
-size_t PairHash::operator()(const pair<const Stop*, const Stop*>& pair) const {
-    return sv_hasher_(pair.first -> name) + sv_hasher_(pair.second -> name) * 37;
-}
+using namespace std;
 
 /* 
- * Добавляет маршрут в справочник. 
- * Заполняет информацию о маршруте и 
- * прописывает маршрут в проходные остановки.
+ * Р”РѕР±Р°РІР»СЏРµС‚ РјР°СЂС€СЂСѓС‚ РІ СЃРїСЂР°РІРѕС‡РЅРёРє. 
+ * Р—Р°РїРѕР»РЅСЏРµС‚ РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РјР°СЂС€СЂСѓС‚Рµ Рё 
+ * РїСЂРѕРїРёСЃС‹РІР°РµС‚ РјР°СЂС€СЂСѓС‚ РІ РїСЂРѕС…РѕРґРЅС‹Рµ РѕСЃС‚Р°РЅРѕРІРєРё.
  */
-void TransportCatalogue::AddBus(sv name, const vector<sv>& route){
+void TransportCatalogue::AddBus(sv name, const vector<StopPtr>& route, const vector<StopPtr>& edge_stops){
     Bus bus{};
     
-    bus.name = move(name);
-    bus.route = move(route);
+    bus.name = std::move(name);
+    bus.route = std::move(route);
+    bus.edge_stops = std::move(edge_stops);
 
-    Bus* bus_ptr = &buses_data_.emplace_back(move(bus));
+    Bus* bus_ptr = &buses_data_.emplace_back(std::move(bus));
     buses_[bus_ptr -> name] = bus_ptr;
 
     AddBusInfo(bus_ptr);
@@ -27,8 +24,8 @@ void TransportCatalogue::AddBus(sv name, const vector<sv>& route){
 }
 
 /*
- * Возвращает указатель на маршрут.
- * Возвращает nullptr, если маршрут не найден.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РјР°СЂС€СЂСѓС‚.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ nullptr, РµСЃР»Рё РјР°СЂС€СЂСѓС‚ РЅРµ РЅР°Р№РґРµРЅ.
  */
 const Bus* TransportCatalogue::GetBus(sv name) const {
     if (buses_.count(name)){
@@ -38,8 +35,8 @@ const Bus* TransportCatalogue::GetBus(sv name) const {
 }
 
 /*
- * Возвращает указатель на информацию о маршруте.
- * Возвращает nullptr, если маршрут не найден.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РјР°СЂС€СЂСѓС‚Рµ.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ nullptr, РµСЃР»Рё РјР°СЂС€СЂСѓС‚ РЅРµ РЅР°Р№РґРµРЅ.
  */
 const BusInfo* TransportCatalogue::GetBusInfo(sv name) const {
     auto bus = GetBus(name);
@@ -52,17 +49,17 @@ const BusInfo* TransportCatalogue::GetBusInfo(sv name) const {
 }
 
 /*
- * Добавляет остановку в справочник.
- * Возвращает указатель на созданную/изменённую остановку.
+ * Р”РѕР±Р°РІР»СЏРµС‚ РѕСЃС‚Р°РЅРѕРІРєСѓ РІ СЃРїСЂР°РІРѕС‡РЅРёРє.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° СЃРѕР·РґР°РЅРЅСѓСЋ/РёР·РјРµРЅС‘РЅРЅСѓСЋ РѕСЃС‚Р°РЅРѕРІРєСѓ.
  */
-const Stop* TransportCatalogue::AddStop(sv name, Coordinates coordinates){
+const Stop* TransportCatalogue::AddStop(sv name, geo::Coordinates coordinates){
 
         Stop stop;
 
-        stop.name = move(name);
-        stop.coordinates = move(coordinates);
+        stop.name = std::move(name);
+        stop.coordinates = std::move(coordinates);
 
-        Stop* stop_ptr = &stops_data_.emplace_back(move(stop));
+        Stop* stop_ptr = &stops_data_.emplace_back(std::move(stop));
         stops_[stop_ptr->name] = stop_ptr;
         stop_info_[stop_ptr] = {};
 
@@ -70,8 +67,8 @@ const Stop* TransportCatalogue::AddStop(sv name, Coordinates coordinates){
 }
 
 /*
- * Возвращает указатель на остановку.
- * Возвращает nullptr, если остановка не найдена.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РѕСЃС‚Р°РЅРѕРІРєСѓ.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ nullptr, РµСЃР»Рё РѕСЃС‚Р°РЅРѕРІРєР° РЅРµ РЅР°Р№РґРµРЅР°.
  */
 const Stop* TransportCatalogue::GetStop(sv name) const {
     if (stops_.count(name)){
@@ -81,8 +78,8 @@ const Stop* TransportCatalogue::GetStop(sv name) const {
 }
 
 /*
- * Возвращает указатель на информацию об остановке.
- * Возвращает nullptr, если остановка не найдена.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± РѕСЃС‚Р°РЅРѕРІРєРµ.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ nullptr, РµСЃР»Рё РѕСЃС‚Р°РЅРѕРІРєР° РЅРµ РЅР°Р№РґРµРЅР°.
  */
 const StopInfo* TransportCatalogue::GetStopInfo(sv name) const {
     auto stop = GetStop(name);
@@ -95,12 +92,12 @@ const StopInfo* TransportCatalogue::GetStopInfo(sv name) const {
 }
 
 /*
- * Добавляет в справочник дистанцию между остановками в виде структуры Distance
- * Доавляются и geo, и on_road дистанция. 
+ * Р”РѕР±Р°РІР»СЏРµС‚ РІ СЃРїСЂР°РІРѕС‡РЅРёРє РґРёСЃС‚Р°РЅС†РёСЋ РјРµР¶РґСѓ РѕСЃС‚Р°РЅРѕРІРєР°РјРё РІ РІРёРґРµ СЃС‚СЂСѓРєС‚СѓСЂС‹ Distance
+ * Р”РѕР°РІР»СЏСЋС‚СЃСЏ Рё geo, Рё on_road РґРёСЃС‚Р°РЅС†РёСЏ. 
  */
 void TransportCatalogue::AddDistance(const Stop* from, const Stop* to, double road_distance){
 
-    double geo_distance = ComputeDistance(from->coordinates, to->coordinates);
+    double geo_distance = geo::ComputeDistance(from->coordinates, to->coordinates);
     
     distances_[{from, to}] = {geo_distance, road_distance};
 
@@ -110,14 +107,14 @@ void TransportCatalogue::AddDistance(const Stop* from, const Stop* to, double ro
 }
 
 /*
- * Возвращает структуру Distance, содержающую geo и on_road дистанции.
+ * Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃС‚СЂСѓРєС‚СѓСЂСѓ Distance, СЃРѕРґРµСЂР¶Р°СЋС‰СѓСЋ geo Рё on_road РґРёСЃС‚Р°РЅС†РёРё.
  */
-Distance TransportCatalogue::GetDistance(const Stop* from, const Stop* to) const {
+geo::Distance TransportCatalogue::GetDistance(const Stop* from, const Stop* to) const {
     return distances_.at({from, to});
 }
 
 /*
- * Прописывает информацию о маршруте в справочнике
+ * РџСЂРѕРїРёСЃС‹РІР°РµС‚ РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РјР°СЂС€СЂСѓС‚Рµ РІ СЃРїСЂР°РІРѕС‡РЅРёРєРµ
  */
 void TransportCatalogue::AddBusInfo(const Bus* bus){
 
@@ -125,23 +122,22 @@ void TransportCatalogue::AddBusInfo(const Bus* bus){
     double road_length = 0;
 
     pair<const Stop*, const Stop*> from_to;
-    // Ничего умнее не придумал.
+    // РќРёС‡РµРіРѕ СѓРјРЅРµРµ РЅРµ РїСЂРёРґСѓРјР°Р».
     unordered_set<sv> uniques;
 
     bool is_first = true;
     for (auto stop : bus -> route){
 
-        const auto stop_ = GetStop(stop);
-        uniques.emplace(stop);
+        uniques.emplace(stop->name);
 
         if (is_first){
-            from_to.first = stop_;
+            from_to.first = stop;
             is_first = false;
             continue;
         }
 
-        from_to.second = stop_;
-        Distance distance = GetDistance(from_to.first, from_to.second);
+        from_to.second = stop;
+        geo::Distance distance = GetDistance(from_to.first, from_to.second);
 
         geo_length += distance.geo;
         road_length += distance.road;
@@ -157,17 +153,13 @@ void TransportCatalogue::AddBusInfo(const Bus* bus){
 }
 
 /*
- * Прописывает сквозные маршруты для остановок.
+ * РџСЂРѕРїРёСЃС‹РІР°РµС‚ СЃРєРІРѕР·РЅС‹Рµ РјР°СЂС€СЂСѓС‚С‹ РґР»СЏ РѕСЃС‚Р°РЅРѕРІРѕРє.
  */
-void TransportCatalogue::AddBusToThroughStops(const Bus* bus){
-    for (sv stop : bus->route){
+void TransportCatalogue::AddBusToThroughStops(BusPtr bus){
+    for (StopPtr stop : bus->route){
 
-        StopInfo& stop_info = stop_info_[GetStop(stop)];
+        StopInfo& stop_info = stop_info_[stop];
 
         stop_info.through_buses.emplace(bus->name);
     }
 }
-
-
-
-
