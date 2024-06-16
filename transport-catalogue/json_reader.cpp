@@ -1,4 +1,5 @@
 #include "json_reader.h"
+#include "json_builder.h"
 
 #include <algorithm>
 #include <sstream>
@@ -65,9 +66,9 @@ renderer::RenderContext JsonReader::GetRenderContext() const {
 // Entry______________________
 
 void JsonReader::ParseEntryRequests(){
-    temp_requests_ = std::move(root_request_.GetRoot().AsMap().at("base_requests"s).AsArray());
+    temp_requests_ = std::move(root_request_.GetRoot().AsDict().at("base_requests"s).AsArray());
     for (const auto& node : temp_requests_){
-        if (node.AsMap().at("type").AsString()[0] == 'B'){
+        if (node.AsDict().at("type").AsString()[0] == 'B'){
             bus_parsed_requests_.emplace_back(&node);
             continue;
         }
@@ -77,18 +78,18 @@ void JsonReader::ParseEntryRequests(){
 
 void JsonReader::FillStops(){
     for (const auto& request : stop_parsed_requests_){
-        geo::Coordinates coords{request->AsMap().at("latitude"s).AsDouble(), 
-                                request->AsMap().at("longitude"s).AsDouble()};
+        geo::Coordinates coords{request->AsDict().at("latitude"s).AsDouble(), 
+                                request->AsDict().at("longitude"s).AsDouble()};
 
-        db_.AddStop(std::move(request->AsMap().at("name"s).AsString())
+        db_.AddStop(std::move(request->AsDict().at("name"s).AsString())
                     ,coords);
     }
 }
 
 void JsonReader::AddDistances(){
     for (const auto& request : stop_parsed_requests_){
-        for (const auto& [to, distance] : request->AsMap().at("road_distances"s).AsMap()){
-            db_.AddDistance(db_.GetStop(std::move(request->AsMap().at("name"s).AsString())) 
+        for (const auto& [to, distance] : request->AsDict().at("road_distances"s).AsDict()){
+            db_.AddDistance(db_.GetStop(std::move(request->AsDict().at("name"s).AsString())) 
                             , db_.GetStop(std::move(to))
                             , distance.AsDouble());
         }       
@@ -97,10 +98,10 @@ void JsonReader::AddDistances(){
 
 void JsonReader::FillBuses(){
     for (const auto& request : bus_parsed_requests_){
-        std::string_view bus_name = std::move(request->AsMap().at("name"s).AsString());
-        json::Array stops = request->AsMap().at("stops"s).AsArray();
+        std::string_view bus_name = std::move(request->AsDict().at("name"s).AsString());
+        json::Array stops = request->AsDict().at("stops"s).AsArray();
         db_.AddBus(bus_name
-                , std::move(MakeRoute(stops, request->AsMap().at("is_roundtrip"s).AsBool()))
+                , std::move(MakeRoute(stops, request->AsDict().at("is_roundtrip"s).AsBool()))
                 , GetEdgeStops(stops));
 
         render_context_.buses_to_draw.emplace_back(db_.GetBus(bus_name));
@@ -109,17 +110,17 @@ void JsonReader::FillBuses(){
 
 // Out________________________
 void JsonReader::ParseStatRequests() {
-    if (root_request_.GetRoot().AsMap().count("stat_requests")){
-        temp_requests_ = root_request_.GetRoot().AsMap().at("stat_requests"s).AsArray();
+    if (root_request_.GetRoot().AsDict().count("stat_requests")){
+        temp_requests_ = root_request_.GetRoot().AsDict().at("stat_requests"s).AsArray();
     }
 }
 // Renderer___________________
 
 void JsonReader::ParseRenderSettings(){
-    if(!root_request_.GetRoot().AsMap().count("render_settings"s)){
+    if(!root_request_.GetRoot().AsDict().count("render_settings"s)){
         return;
     }
-    json::Dict settings = root_request_.GetRoot().AsMap().at("render_settings"s).AsMap();
+    json::Dict settings = root_request_.GetRoot().AsDict().at("render_settings"s).AsDict();
     renderer::Settings settings_; 
     settings_.width_ = settings.at("width"s).AsDouble();
     settings_.height_ = settings.at("height"s).AsDouble();
@@ -185,42 +186,66 @@ vector<StopPtr> JsonReader::MakeRoute(const json::Array& stops, bool is_roundtri
 }
 
 json::Node JsonReader::MakeStatNode(const json::Node& request) const {
-    json::Dict node;
+    json::Node node;
 
-    if (request.AsMap().at("type"s).AsString()[0] == 'B'){
-        auto info_ptr = db_.GetBusInfo(std::move(request.AsMap().at("name"s).AsString()));
+    if (request.AsDict().at("type"s).AsString()[0] == 'B'){
+        auto info_ptr = db_.GetBusInfo(std::move(request.AsDict().at("name"s).AsString()));
         if (info_ptr){;
-            node = {{"request_id"s, json::Node(request.AsMap().at("id"s))}
-                 , {"curvature"s, json::Node(info_ptr->curvature)}
-                 , {"route_length"s, json::Node(static_cast<int>(info_ptr->route_length))}
-                 , {"stop_count"s, json::Node(static_cast<int>(info_ptr->stops_count))}
-                 , {"unique_stop_count"s, json::Node(static_cast<int>(info_ptr->unique_count))}};
+            node = json::Builder{}
+                    .StartDict()
+                        .Key("request_id"s).Value(request.AsDict().at("id"s).AsInt())
+                        .Key("curvature"s).Value(info_ptr->curvature)
+                        .Key("route_length"s).Value(static_cast<int>(info_ptr->route_length))
+                        .Key("stop_count"s).Value(static_cast<int>(info_ptr->stops_count))
+                        .Key("unique_stop_count"s).Value(static_cast<int>(info_ptr->unique_count))
+                    .EndDict()
+                    .Build();
         } else {
-            node = {{"request_id"s, json::Node(request.AsMap().at("id"s))}
-                   ,{"error_message"s, json::Node("not found"sv)}};
+            node = json::Builder{}
+                    .StartDict()
+                        .Key("request_id"s).Value(request.AsDict().at("id"s).AsInt())
+                        .Key("error_message"s).Value("not found"s)
+                    .EndDict()
+                    .Build();
         }
-    } else if (request.AsMap().at("type"s).AsString()[0] == 'S'){
-        auto stop_stat = handler_.GetBusesByStop(std::move(request.AsMap().at("name").AsString()));
+    } else if (request.AsDict().at("type"s).AsString()[0] == 'S'){
+        auto stop_stat = handler_.GetBusesByStop(std::move(request.AsDict().at("name").AsString()));
         if (stop_stat){
-            node = {{"request_id"s, json::Node(request.AsMap().at("id"s))}
-                   ,{"buses", json::Node(MakeArray(stop_stat))}};
+            node = json::Builder{}
+                    .StartDict()
+                        .Key("request_id"s).Value(request.AsDict().at("id"s).AsInt())
+                        .Key("buses").Value(MakeArray(stop_stat))
+                    .EndDict()
+                    .Build();
         } else {
-            node = {{"request_id"s, json::Node(request.AsMap().at("id"s))}
-                   ,{"error_message"s, json::Node("not found"sv)}};
+            node = json::Builder{}
+                    .StartDict()
+                        .Key("request_id"s).Value(request.AsDict().at("id"s).AsInt())
+                        .Key("error_message"s).Value("not found"s)
+                    .EndDict()
+                    .Build();
         }
     } else {
         std::stringstream stream;
         handler_.RenderMap().Render(stream);
 
-        node = {{"request_id"s, json::Node(request.AsMap().at("id"s))}
-               ,{"map", json::Node(stream.str())}};
+        node = json::Builder{}
+                .StartDict()
+                    .Key("request_id"s).Value(request.AsDict().at("id"s).AsInt())
+                    .Key("map").Value(stream.str())
+                .EndDict()
+                .Build();
         stream.clear();
     }
     return node;    
 }
 
 json::Array JsonReader::MakeArray(const set<sv>* set) const {
-    return {set->begin(), set->end()};
+    json::Array result;
+    for (const auto& elem : *set){
+        result.emplace_back(std::string(elem));
+    }
+    return result;
 }
 std::vector<StopPtr> JsonReader::GetEdgeStops(const json::Array& stops) const {
     if (stops.empty()){

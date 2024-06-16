@@ -4,11 +4,6 @@
 
 using namespace std;
 
-/* 
- * Добавляет маршрут в справочник. 
- * Заполняет информацию о маршруте и 
- * прописывает маршрут в проходные остановки.
- */
 void TransportCatalogue::AddBus(sv name, const vector<StopPtr>& route, const vector<StopPtr>& edge_stops){
     Bus bus{};
     
@@ -23,10 +18,6 @@ void TransportCatalogue::AddBus(sv name, const vector<StopPtr>& route, const vec
     AddBusToThroughStops(bus_ptr);
 }
 
-/*
- * Возвращает указатель на маршрут.
- * Возвращает nullptr, если маршрут не найден.
- */
 const Bus* TransportCatalogue::GetBus(sv name) const {
     if (buses_.count(name)){
         return buses_.at(name);
@@ -34,10 +25,6 @@ const Bus* TransportCatalogue::GetBus(sv name) const {
     return nullptr;
 }
 
-/*
- * Возвращает указатель на информацию о маршруте.
- * Возвращает nullptr, если маршрут не найден.
- */
 const BusInfo* TransportCatalogue::GetBusInfo(sv name) const {
     auto bus = GetBus(name);
 
@@ -48,10 +35,6 @@ const BusInfo* TransportCatalogue::GetBusInfo(sv name) const {
     return &bus_info_.at(bus);
 }
 
-/*
- * Добавляет остановку в справочник.
- * Возвращает указатель на созданную/изменённую остановку.
- */
 const Stop* TransportCatalogue::AddStop(sv name, geo::Coordinates coordinates){
 
         Stop stop;
@@ -66,10 +49,6 @@ const Stop* TransportCatalogue::AddStop(sv name, geo::Coordinates coordinates){
         return stop_ptr;
 }
 
-/*
- * Возвращает указатель на остановку.
- * Возвращает nullptr, если остановка не найдена.
- */
 const Stop* TransportCatalogue::GetStop(sv name) const {
     if (stops_.count(name)){
         return stops_.at(name);
@@ -77,10 +56,6 @@ const Stop* TransportCatalogue::GetStop(sv name) const {
     return nullptr;
 }
 
-/*
- * Возвращает указатель на информацию об остановке.
- * Возвращает nullptr, если остановка не найдена.
- */
 const StopInfo* TransportCatalogue::GetStopInfo(sv name) const {
     auto stop = GetStop(name);
 
@@ -91,10 +66,6 @@ const StopInfo* TransportCatalogue::GetStopInfo(sv name) const {
     return &stop_info_.at(stop);
 }
 
-/*
- * Добавляет в справочник дистанцию между остановками в виде структуры Distance
- * Доавляются и geo, и on_road дистанция. 
- */
 void TransportCatalogue::AddDistance(const Stop* from, const Stop* to, double road_distance){
 
     double geo_distance = geo::ComputeDistance(from->coordinates, to->coordinates);
@@ -106,23 +77,16 @@ void TransportCatalogue::AddDistance(const Stop* from, const Stop* to, double ro
     }
 }
 
-/*
- * Возвращает структуру Distance, содержающую geo и on_road дистанции.
- */
 geo::Distance TransportCatalogue::GetDistance(const Stop* from, const Stop* to) const {
     return distances_.at({from, to});
 }
 
-/*
- * Прописывает информацию о маршруте в справочнике
- */
 void TransportCatalogue::AddBusInfo(const Bus* bus){
 
     double geo_length = 0;
     double road_length = 0;
 
     pair<const Stop*, const Stop*> from_to;
-    // Ничего умнее не придумал.
     unordered_set<sv> uniques;
 
     bool is_first = true;
@@ -152,9 +116,6 @@ void TransportCatalogue::AddBusInfo(const Bus* bus){
                     , curvature};
 }
 
-/*
- * Прописывает сквозные маршруты для остановок.
- */
 void TransportCatalogue::AddBusToThroughStops(BusPtr bus){
     for (StopPtr stop : bus->route){
 
