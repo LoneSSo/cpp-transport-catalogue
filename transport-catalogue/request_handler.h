@@ -6,7 +6,6 @@
 
 class RequestHandler {
 public:
-    // MapRenderer понадобится в следующей части итогового проекта
     RequestHandler(const TransportCatalogue& db, const renderer::MapRenderer& renderer);
 
     // Возвращает информацию о маршруте (запрос Bus)
@@ -15,7 +14,6 @@ public:
     // Возвращает маршруты, проходящие через
     const std::set<sv>* GetBusesByStop(const std::string_view& stop_name) const;
 
-    // Этот метод будет нужен в следующей части итогового проекта
     svg::Document RenderMap() const;
 
 private:
