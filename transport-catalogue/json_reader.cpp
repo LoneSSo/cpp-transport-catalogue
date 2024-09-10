@@ -24,7 +24,9 @@ void JsonReader::FillCatalogue(){
     ParseEntryRequests();
     FillStops();
     AddDistances();
+    SetRoutingInfo();
     FillBuses();
+    
 
     temp_requests_.clear();
     ParseStatRequests();
@@ -106,6 +108,13 @@ void JsonReader::FillBuses(){
 
         render_context_.buses_to_draw.emplace_back(db_.GetBus(bus_name));
     }
+}
+
+void JsonReader::SetRoutingInfo(){
+    json::Node route_info = root_request_.GetRoot().AsDict().at("routing_settings");
+    RouteSettings settings = {route_info.AsDict().at("bus_wait_time").AsDouble()
+                            , route_info.AsDict().at("bus_velocity").AsDouble()};
+    db_.SetRouteSettings(settings);
 }
 
 // Out________________________
@@ -190,7 +199,7 @@ json::Node JsonReader::MakeStatNode(const json::Node& request) const {
 
     if (request.AsDict().at("type"s).AsString()[0] == 'B'){
         auto info_ptr = db_.GetBusInfo(std::move(request.AsDict().at("name"s).AsString()));
-        if (info_ptr){;
+        if (info_ptr){
             node = json::Builder{}
                     .StartDict()
                         .Key("request_id"s).Value(request.AsDict().at("id"s).AsInt())
@@ -225,6 +234,25 @@ json::Node JsonReader::MakeStatNode(const json::Node& request) const {
                     .EndDict()
                     .Build();
         }
+    } else if (request.AsDict().at("type").AsString()[0] == 'R'){
+        auto best_way = handler_.GetBestWay(std::move(request.AsDict().at("from").AsString())
+                                           ,std::move(request.AsDict().at("to").AsString()));
+        if (best_way){
+            node = json::Builder{}
+                    .StartDict()
+                        .Key("request_id"s).Value(request.AsDict().at("id"s).AsInt())
+                        .Key("total_time").Value(best_way->total_time)
+                        .Key("items").Value(MakeWayArray(*best_way))
+                    .EndDict()
+                    .Build();
+        } else {
+            node = json::Builder{}
+                    .StartDict()
+                        .Key("request_id"s).Value(request.AsDict().at("id"s).AsInt())
+                        .Key("error_message"s).Value("not found"s)
+                    .EndDict()
+                    .Build();
+        }
     } else {
         std::stringstream stream;
         handler_.RenderMap().Render(stream);
@@ -244,6 +272,34 @@ json::Array JsonReader::MakeArray(const set<sv>* set) const {
     json::Array result;
     for (const auto& elem : *set){
         result.emplace_back(std::string(elem));
+    }
+    return result;
+} 
+
+
+json::Array JsonReader::MakeWayArray(const router::Way& way) const {
+    json::Array result;
+    for (const auto& elem : way.way){
+        json::Node temp;
+        if (elem.type[0] == 'W'){
+            temp = json::Builder{}
+                .StartDict()
+                    .Key("type").Value(elem.type)
+                    .Key("stop_name").Value(std::string(elem.name))
+                    .Key("time").Value(elem.time)
+                .EndDict()
+                .Build();
+        } else {
+            temp = json::Builder{}
+                .StartDict()
+                    .Key("type").Value(elem.type)
+                    .Key("bus").Value(std::string(elem.name))
+                    .Key("time").Value((elem.time))
+                    .Key("span_count").Value(static_cast<int>(elem.span_count))
+                .EndDict()
+                .Build();
+    }
+        result.emplace_back(temp);
     }
     return result;
 }

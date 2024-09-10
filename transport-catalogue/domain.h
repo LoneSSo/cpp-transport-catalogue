@@ -25,9 +25,15 @@ struct Bus {
 };
 using BusPtr = const Bus*;
 
+struct RouteSettings {
+
+	double wait_time = 0;
+	double velocity = 0;
+};
 struct StopInfo {
 
 	std::set<sv> through_buses;
+	std::vector<size_t> vertexes;
 };
 
 struct BusInfo{
@@ -44,5 +50,6 @@ struct PairHash {
 private:
 	std::hash<sv> sv_hasher_;
 };
+
 
 

@@ -35,6 +35,14 @@ const BusInfo* TransportCatalogue::GetBusInfo(sv name) const {
     return &bus_info_.at(bus);
 }
 
+std::vector<BusPtr> TransportCatalogue::GetAllBuses() const {
+    std::vector<BusPtr> result;
+    for (auto [bus, x] : bus_info_){
+        result.push_back(bus);
+    }
+    return result;
+}
+
 const Stop* TransportCatalogue::AddStop(sv name, geo::Coordinates coordinates){
 
         Stop stop;
@@ -66,6 +74,14 @@ const StopInfo* TransportCatalogue::GetStopInfo(sv name) const {
     return &stop_info_.at(stop);
 }
 
+std::vector<StopPtr> TransportCatalogue::GetAllStops() const {
+    std::vector<StopPtr> result;
+    for (auto [stop, x] : stop_info_){
+        result.push_back(stop);
+    }
+    return result;
+}
+
 void TransportCatalogue::AddDistance(const Stop* from, const Stop* to, double road_distance){
 
     double geo_distance = geo::ComputeDistance(from->coordinates, to->coordinates);
@@ -79,6 +95,13 @@ void TransportCatalogue::AddDistance(const Stop* from, const Stop* to, double ro
 
 geo::Distance TransportCatalogue::GetDistance(const Stop* from, const Stop* to) const {
     return distances_.at({from, to});
+}
+void TransportCatalogue::SetRouteSettings(RouteSettings settings){
+    route_settings_ = settings;
+}
+
+RouteSettings TransportCatalogue::GetRouteSettings() const {
+    return route_settings_;
 }
 
 void TransportCatalogue::AddBusInfo(const Bus* bus){

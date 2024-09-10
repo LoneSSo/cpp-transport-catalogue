@@ -11,7 +11,10 @@ class TransportCatalogue {
 using sv = std::string_view;
 using DistancesInfo = std::unordered_map<std::pair<const Stop*, const Stop*>, geo::Distance, PairHash>;
 
+
 public:
+	
+
 	TransportCatalogue() = default;
 
 
@@ -20,6 +23,8 @@ public:
 	const Bus* GetBus(sv name) const;
 
 	const BusInfo* GetBusInfo(sv name) const;
+
+	std::vector<BusPtr> GetAllBuses() const;
 	
 
 	const Stop* AddStop(sv name, geo::Coordinates coordinates);
@@ -28,23 +33,30 @@ public:
 
 	const StopInfo* GetStopInfo(sv name) const;
 
+	std::vector<StopPtr> GetAllStops() const;
 
-	void AddDistance(const Stop* from, const Stop* to, double distance);
 
-	geo::Distance GetDistance(const Stop* from, const Stop* to) const;
+	void AddDistance(StopPtr from, StopPtr to, double distance);
+
+	geo::Distance GetDistance(StopPtr from, const StopPtr to) const;
+
+	void SetRouteSettings(RouteSettings settings);
+
+	RouteSettings GetRouteSettings() const;
 
 private:
-	void AddBusInfo(const Bus* bus);
+	void AddBusInfo(BusPtr bus);
 
-	void AddBusToThroughStops(const Bus* bus);
+	void AddBusToThroughStops(BusPtr bus);
 
 	std::deque<Bus> buses_data_;
-	std::unordered_map<sv, const Bus*> buses_;	
-	std::unordered_map<const Bus*, BusInfo> bus_info_;
+	std::unordered_map<sv, BusPtr> buses_;	
+	std::unordered_map<BusPtr, BusInfo> bus_info_;
 
 	std::deque<Stop> stops_data_;
-	std::unordered_map<sv, const Stop*> stops_;
-	std::unordered_map<const Stop*, StopInfo> stop_info_;
+	std::unordered_map<sv, StopPtr> stops_;
+	std::unordered_map<StopPtr, StopInfo> stop_info_;
 
 	DistancesInfo distances_;
+	RouteSettings route_settings_;
 };

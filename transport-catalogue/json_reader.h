@@ -22,6 +22,7 @@ private:
     void FillStops();
     void AddDistances();
     void FillBuses();
+    void SetRoutingInfo();
 
     std::vector<const json::Node*> bus_parsed_requests_;
     std::vector<const json::Node*> stop_parsed_requests_;
@@ -38,6 +39,7 @@ private:
     json::Node MakeStatNode(const json::Node& request) const;
     json::Array MakeArray(const std::set<sv>* set) const;
     std::vector<StopPtr> GetEdgeStops(const json::Array& stops) const;
+    json::Array MakeWayArray(const router::Way& way) const;
 
     TransportCatalogue& db_;
     RequestHandler handler_;
